@@ -110,4 +110,12 @@
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
+
+🛠️ To Do
+
+* Fixing the editing task causing UI to freeze
+* Fix editing column name text input
+
+---
+
 **Preview :** 
