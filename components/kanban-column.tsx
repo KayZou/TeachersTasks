@@ -26,8 +26,7 @@ export function KanbanColumn({ title, children, columnId }: KanbanColumnProps) {
         <CardTitle className="text-center text-lg">{title}</CardTitle>
       </CardHeader>
       <CardContent className="p-4 pt-0">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-medium">{title}</h3>
+        <div className="flex items-center justify-center mb-4">
           <div className="flex items-center gap-2">
             <TaskDialog
               trigger={
