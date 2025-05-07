@@ -1,78 +1,120 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import { Button } from "./ui/button";
 import {
   DropdownMenu,
+  DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "./ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
-import { Button } from "./ui/button";
-import { useState } from "react";
-import { TaskDialog } from "./task-dialog";
+import { deleteTask, moveTask, updateTask } from "@/lib/actions/task";
 import { assignees } from "@/lib/data/assignees";
-import { TaskFormValues } from "@/lib/schemas";
-import { deleteTask } from "@/lib/actions/task";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "./ui/select";
+import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
+import { columns } from "@/drizzle/schema";
+import type { InferSelectModel } from "drizzle-orm";
+
+type Column = InferSelectModel<typeof columns>;
 
 interface TaskCardProps {
   id: number;
   columnId: number;
   title: string;
   description?: string;
-  assignee?: {
-    id: string;
-    name: string;
-    avatar?: string;
-  };
-  onAssigneeChange?: (userId: string) => void;
-  onTaskUpdate?: (data: TaskFormValues) => void;
+  assignee?: { id: string; name: string; avatarUrl?: string };
+  onAssigneeChange?: (id: string) => void;
+  availableColumns: Column[];
 }
 
 export function TaskCard({
   id,
   columnId,
   title,
-  description,
+  description = "",
   assignee: assigneeProp,
   onAssigneeChange,
-  onTaskUpdate,
+  availableColumns,
 }: TaskCardProps) {
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(title);
+  const [draftDesc, setDraftDesc] = useState(description);
 
   const assignee = assignees.find((a) => a.id === assigneeProp?.id);
 
+  const handleSave = async () => {
+    await updateTask({ id, title: draftTitle, description: draftDesc, columnId });
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setDraftTitle(title);
+    setDraftDesc(description);
+    setIsEditing(false);
+  };
+
   const handleDelete = async () => {
-    const result = await deleteTask(id);
-    if (result.error) {
-      // You might want to add toast notification here
-      console.error(result.error);
+    if (confirm(`Delete task “${title}”?`)) {
+      await deleteTask(id);
     }
   };
 
+  const handleMove = async (targetColumnId: number) => {
+    await moveTask(id, targetColumnId);
+  };
+
   return (
-    <>
-      <Card className="mb-4 cursor-move hover:shadow-md transition-shadow">
-        <CardHeader className="p-4 pb-2">
-          <div className="flex items-start justify-between">
+    <Card className="mb-4 hover:shadow-md transition-shadow">
+      <CardHeader className="p-4 pb-2">
+        {isEditing ? (
+          <div className="space-y-2 w-full">
+            <Input
+              value={draftTitle}
+              onChange={(e) => setDraftTitle(e.currentTarget.value)}
+              placeholder="Task title"
+            />
+            <Textarea
+              value={draftDesc}
+              onChange={(e) => setDraftDesc(e.currentTarget.value)}
+              placeholder="Description (optional)"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={handleCancel}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleSave}>
+                Save
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start justify-between w-full">
             <CardTitle className="text-sm font-medium">{title}</CardTitle>
             <div className="flex items-center gap-2">
+              {/* Assignee selector */}
               <Select value={assignee?.id} onValueChange={onAssigneeChange}>
                 <SelectTrigger className="w-[140px] h-8">
                   <SelectValue placeholder="Assign to...">
                     {assignee && (
                       <div className="flex items-center gap-2">
                         <Avatar className="h-6 w-6">
-                          <AvatarImage src={assignee?.avatarUrl} />
-                          <AvatarFallback>{assignee?.name[0]}</AvatarFallback>
+                          <AvatarImage src={assignee.avatarUrl} />
+                          <AvatarFallback>
+                            {assignee.name[0]}
+                          </AvatarFallback>
                         </Avatar>
                         <span className="truncate">{assignee.name}</span>
                       </div>
@@ -84,10 +126,7 @@ export function TaskCard({
                     <SelectItem key={member.id} value={member.id}>
                       <div className="flex items-center gap-2">
                         <Avatar className="h-6 w-6">
-                          <AvatarImage
-                            src={member.avatarUrl}
-                            alt={member.name}
-                          />
+                          <AvatarImage src={member.avatarUrl} alt={member.name} />
                           <AvatarFallback>
                             {member.name.slice(0, 2).toUpperCase()}
                           </AvatarFallback>
@@ -98,16 +137,37 @@ export function TaskCard({
                   ))}
                 </SelectContent>
               </Select>
+
+              {/* Actions */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-8 w-8 p-0">
+                  <Button variant="ghost" size="icon">
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
+                  <DropdownMenuItem onClick={() => setIsEditing(true)}>
                     Edit
                   </DropdownMenuItem>
+
+                  {availableColumns.length > 0 && (
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>Move to</DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        {availableColumns
+                          .filter((c) => c.id !== columnId)
+                          .map((c) => (
+                            <DropdownMenuItem
+                              key={c.id}
+                              onClick={() => handleMove(c.id)}
+                            >
+                              {c.title}
+                            </DropdownMenuItem>
+                          ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  )}
+
                   <DropdownMenuItem
                     onClick={handleDelete}
                     className="text-destructive"
@@ -118,26 +178,14 @@ export function TaskCard({
               </DropdownMenu>
             </div>
           </div>
-        </CardHeader>
-        {description && (
-          <CardContent className="p-4 pt-2 text-sm text-muted-foreground">
-            {description}
-          </CardContent>
         )}
-      </Card>
+      </CardHeader>
 
-      <TaskDialog
-        mode="edit"
-        columnId={columnId}
-        taskId={id}
-        defaultValues={{
-          title,
-          description: description || "",
-          columnId,
-        }}
-        open={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-      />
-    </>
+      {!isEditing && description && (
+        <CardContent className="p-4 pt-2 text-sm text-muted-foreground">
+          {description}
+        </CardContent>
+      )}
+    </Card>
   );
 }

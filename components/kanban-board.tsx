@@ -6,7 +6,7 @@ export async function KanbanBoard() {
   const [columns, tasks] = await Promise.all([getColumns(), getTasks()]);
 
   return (
-    <div className="flex gap-6 p-6 overflow-x-auto min-h-screen">
+    <div className="flex gap-6 p-6 overflow-x-auto min-h-screen justify-center">
       {columns.map((column) => (
         <KanbanColumn key={column.id} title={column.title} columnId={column.id}>
           {tasks
@@ -17,7 +17,16 @@ export async function KanbanBoard() {
                 id={task.id}
                 columnId={column.id}
                 title={task.title}
-                description={task.description ?? undefined}
+                description={task.description}
+                availableColumns={columns.filter((c) => c.id !== column.id)}
+                assignee={
+                  task.assigneeId
+                    ? {
+                        id: task.assigneeId,
+                        name: "", // We'll need to fetch users/assignees later
+                      }
+                    : undefined
+                }
               />
             ))}
         </KanbanColumn>
