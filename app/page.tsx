@@ -1,15 +1,22 @@
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { KanbanBoard } from "@/components/kanban-board";
 import { ColumnDialog } from "@/components/column-dialog";
 import Image from "next/image";
 
 export default function Home() {
   return (
+    <>
     <main className="p-8">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Teachers Tasks</h1>
+        <div className="">
+          <Image
+            src="/TeachersTasksLogo.png"
+            width={100}
+            height={100}
+            alt="Logo"
+            priority
+          />
+        </div>
         <Image
           src="/ministere-de-leducation-maroc.png"
           width={200}
@@ -28,5 +35,7 @@ export default function Home() {
         <KanbanBoard />
       </main>
     </main>
+    <footer><h3 className="text-center">Made By School Solutions; Zak & Amina</h3></footer>
+    </>
   );
 }
